@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# PyCharm project settings
+.idea/
+
+# macOS metadata
+.DS_Store
+
+# Generated outputs
+*.png
