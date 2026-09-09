@@ -1,5 +1,9 @@
 # Gravity Assist Robustness Explorer
 
+> **Status: Work in progress.** The deterministic Jupiter flyby is currently
+> being built. Monte Carlo uncertainty propagation and stochastic differential
+> equation modelling are planned extensions.
+
 ## Project goal
 
 This project will simulate a spacecraft performing a gravity-assist flyby of
@@ -85,32 +89,34 @@ solely to make the model stochastic.
 
 ## Current implementation
 
-The repository currently provides a tested two-body foundation:
+The repository currently provides the beginnings of a deterministic flyby
+model:
 
-- a `CelestialBody` model and Earth reference data;
-- point-mass gravitational acceleration;
-- fixed-step RK4 propagation of a six-component Cartesian state;
-- orbital-element utilities;
-- a low-Earth-orbit example;
-- numerical orbit tests.
+- `CelestialBody` and `OrbitalState` data models;
+- gravitational acceleration from multiple bodies;
+- a reusable, single-step RK4 integrator;
+- packing of the Jupiter and spacecraft states into a 12-component vector;
+- a restricted three-body derivative for a fixed Sun, moving Jupiter, and
+  massless spacecraft;
+- an initial experiment that advances the combined state by one RK4 step.
 
-This baseline is deliberately simpler than the final research model. It can be
-validated before the Jupiter flyby and stochastic layers are introduced.
+Full trajectory propagation, flyby measurements, plots, automated tests,
+Monte Carlo experiments, and SDE integration have not yet been implemented.
 
 ## Current project layout
 
 ```text
 .
-├── examples/
-│   └── low_earth_orbit.py
-├── src/
-│   └── orbital_dynamics/
-│       ├── __init__.py
-│       ├── bodies.py
-│       ├── elements.py
-│       └── propagation.py
-├── tests/
-│   └── test_orbits.py
+├── experiments/
+│   └── deterministic_flyby.py
+├── gravity_assist/
+│   ├── __init__.py
+│   ├── constants.py
+│   ├── forces.py
+│   ├── integrators.py
+│   ├── models.py
+│   └── simulation.py
+├── .gitignore
 └── README.md
 ```
 
@@ -118,10 +124,10 @@ validated before the Jupiter flyby and stochastic layers are introduced.
 
 ### Phase 1: validate the deterministic foundation
 
-- Check conservation of orbital energy and angular momentum.
-- Test convergence as the RK4 step size decreases.
-- Confirm that the existing circular-orbit example completes one orbit with a
-  small state error.
+- Test the celestial-body and orbital-state validation.
+- Check gravitational acceleration against a hand-calculated case.
+- Test the general RK4 step using a differential equation with a known result.
+- Check that the 12-component derivative has the correct shape and values.
 
 ### Phase 2: build the deterministic Jupiter flyby
 
@@ -185,13 +191,15 @@ It is a robustness study rather than a mission-design tool. The limitations of
 the restricted-body model, simplified manoeuvres, assumed ephemerides, and
 chosen uncertainty distributions will be documented alongside the results.
 
-## Running the current baseline
+## Running the current experiment
+
+The current code requires Python 3.10 or later and NumPy. From the project
+root, install NumPy if necessary and run:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev,plot]"
-pytest
-python examples/low_earth_orbit.py
+python -m pip install numpy
+python -m experiments.deterministic_flyby
 ```
 
+The experiment currently checks that one RK4 step preserves the 12-component
+shape, leaves the original state unchanged, and produces a changed next state.
