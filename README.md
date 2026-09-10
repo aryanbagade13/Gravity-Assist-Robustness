@@ -1,41 +1,48 @@
-# Gravity Assist Robustness Explorer
+# Gravity-Assist Trajectory Optimisation and Robustness
 
 > **Status: Work in progress.** A nominal deterministic Jupiter flyby can now
-> be propagated, measured, and visualised. Validation, Monte Carlo uncertainty
-> propagation, and stochastic differential equation modelling are planned
-> extensions.
+> be propagated, measured, and visualised. This is the first component of a
+> planned interplanetary trajectory-design and uncertainty-analysis framework.
 
 ## Project goal
 
-This project will simulate a spacecraft performing a gravity-assist flyby of
-Jupiter and investigate how uncertainty changes the outcome of the encounter.
+This project aims to design fuel-efficient spacecraft routes to different
+planets using planetary gravity assists and timed thruster manoeuvres.
 
-The final aim is to determine how the timing of a trajectory-correction
-manoeuvre affects the correction velocity and reserve propellant required to
-reach a desired post-flyby trajectory.
+The deterministic part of the project will propagate candidate trajectories,
+apply manoeuvres, and optimise quantities such as encounter timing, flyby
+geometry, and burn vectors. The principal objective will be to reach a chosen
+destination while minimising total velocity change and propellant use.
 
-## Research question
+Monte Carlo simulation will then test how reliably an optimised route succeeds
+when its initial state, navigation solution, or thruster execution is
+imperfect. A later stochastic-calculus extension will investigate continuous
+random disturbances during flight.
 
-> How do initial navigation uncertainty and continuous stochastic acceleration
-> disturbances affect the timing and propellant requirements of trajectory
-> corrections before a Jupiter gravity assist?
+## Research questions
+
+> How can gravity assists and spacecraft manoeuvres be combined to reach a
+> target planet using minimal propellant?
+
+> How robust are the resulting trajectories to uncertain initial conditions,
+> manoeuvre errors, and continuous stochastic disturbances?
 
 ## Why this matters
 
-A gravity assist is sensitive to the spacecraft's incoming position and
-velocity. Small errors before closest approach can alter its flyby altitude,
-turning angle, outgoing direction, and heliocentric velocity. A deterministic
-trajectory alone therefore cannot describe the operational risk surrounding a
-real encounter.
+Gravity assists can produce large changes in heliocentric velocity without
+requiring the spacecraft to supply the equivalent change using fuel. Their
+outcomes are nevertheless sensitive to the incoming position and velocity.
+Small errors can alter the flyby altitude, turning angle, outgoing direction,
+and eventual planetary encounter.
 
-This project will compare three increasingly realistic models:
+The project will therefore connect three different numerical tasks:
 
-1. A nominal deterministic flyby.
-2. Monte Carlo propagation of uncertain initial conditions.
-3. A stochastic differential equation with continuous acceleration noise.
+1. Propagate and optimise deterministic interplanetary trajectories.
+2. Evaluate optimised trajectories with Monte Carlo simulation.
+3. Extend the dynamics with a physically justified stochastic process.
 
-The comparison will be used to study when a correction should be made and how
-much propellant should be reserved for uncertainty.
+Monte Carlo sampling is used to measure robustness, not as a replacement for
+the deterministic optimiser that searches for fuel-efficient routes.
 
 ## Mathematical model
 
@@ -56,12 +63,28 @@ where `a(r, t)` is the combined gravitational acceleration. These ordinary
 differential equations will be integrated using the fourth-order Runge-Kutta
 method (RK4).
 
+### Thruster manoeuvres and fuel
+
+The first thruster model will treat a short burn as an instantaneous velocity
+change:
+
+```text
+v_after = v_before + delta_v.
+```
+
+A candidate mission may contain multiple burns separated by coast and flyby
+segments. The initial optimisation objective will minimise total `delta_v`;
+the rocket equation will later convert this into propellant mass. Arrival,
+flight-time, collision-avoidance, and flyby-altitude requirements will be
+treated as constraints.
+
 ### Monte Carlo uncertainty
 
-Arrival position, arrival velocity, or manoeuvre execution errors will first
-be sampled from chosen probability distributions. Each sample then follows an
-ordinary deterministic trajectory. This propagates initial uncertainty but is
-not, by itself, stochastic calculus.
+Initial position, initial velocity, navigation, and manoeuvre-execution errors
+will be sampled from stated probability distributions. Each sample will then
+follow the deterministic mission model. The resulting distribution of
+destinations, fuel costs, and failed encounters will quantify the route's
+robustness, but this is not by itself stochastic calculus.
 
 ### Continuous stochastic disturbances
 
@@ -127,54 +150,55 @@ and SDE integration have not yet been implemented.
 
 ## Development roadmap
 
-### Phase 1: validate the deterministic foundation
+### Phase 1: validate the single-flyby foundation
 
 - Test the celestial-body and orbital-state validation.
 - Check gravitational acceleration against a hand-calculated case.
 - Test the general RK4 step using a differential equation with a known result.
-- Check that the 12-component derivative has the correct shape and values.
+- Perform timestep-convergence and collision checks.
+- Compare the simulated turning angle with two-body hyperbolic theory.
 
-### Phase 2: build the deterministic Jupiter flyby
+### Phase 2: generalise the mission model
 
-- Add a full heliocentric trajectory plot.
-- Check the result at several RK4 timesteps.
-- Document the source and interpretation of the initial conditions.
+- Represent the time-dependent states of multiple planets.
+- Introduce documented planetary ephemerides and reference frames.
+- Define departure conditions and target-planet arrival requirements.
+- Support propagation through multiple coast and flyby segments.
 
-### Phase 3: measure the flyby outcome
-
-- Detect closest approach and calculate flyby altitude. **Completed.**
-- Measure the turning angle and outgoing direction. **Completed.**
-- Compare incoming and outgoing heliocentric velocity. **Completed.**
-- Reject trajectories that intersect Jupiter or violate model assumptions.
-
-### Phase 4: introduce manoeuvres
+### Phase 3: introduce thruster manoeuvres and fuel
 
 - Apply an impulsive trajectory-correction manoeuvre before the encounter.
-- Define a target post-flyby state or target outcome.
-- Find the correction velocity required at different manoeuvre times.
-- Convert correction velocity into propellant using the rocket equation.
+- Support multiple burns with chosen times and three-dimensional burn vectors.
+- Accumulate the mission's total `delta_v`.
+- Convert `delta_v` into propellant mass using the rocket equation.
+
+### Phase 4: optimise deterministic routes
+
+- Begin with a fixed planet sequence and destination.
+- Optimise burn timing, burn vectors, and flyby geometry.
+- Minimise fuel subject to arrival, duration, altitude, and safety constraints.
+- Compare alternative gravity-assist sequences and target planets.
 
 ### Phase 5: propagate initial uncertainty with Monte Carlo
 
-- Choose and justify distributions for arrival and manoeuvre errors.
-- Generate many uncertain initial states.
-- Propagate each sample through the deterministic flyby model.
-- Study the distributions of closest approach, outgoing velocity, correction
-  cost, and failed encounters.
+- Choose and justify distributions for navigation and manoeuvre errors.
+- Propagate many perturbed versions of an optimised route.
+- Measure arrival dispersion, fuel use, unsafe flybys, and mission failures.
+- Compare expected performance with conservative fuel-reserve requirements.
 
 ### Phase 6: add stochastic calculus
 
 - Define a physically meaningful continuous acceleration-noise model.
 - Implement Euler-Maruyama and verify its `sqrt(dt)` noise scaling.
-- Compare SDE paths with the deterministic and initial-uncertainty models.
+- Compare SDE paths with deterministic and Monte Carlo uncertainty models.
 - Perform time-step and sample-size convergence checks.
 
-### Phase 7: produce the research result
+### Phase 7: produce the research tool and analysis
 
-- Compare early and late correction strategies.
-- Estimate expected correction cost and upper-tail propellant requirements.
-- Recommend a reserve covering a stated proportion of simulated encounters.
-- Report sensitivity to assumptions about uncertainty and disturbance strength.
+- Present optimised routes to selected destination planets.
+- Compare direct transfers with routes using gravity assists.
+- Report fuel, flight-time, and robustness trade-offs.
+- Document model limitations and sensitivity to uncertainty assumptions.
 
 ## Validation principles
 
@@ -185,14 +209,18 @@ parameters and probability distributions will be stated explicitly.
 
 ## Intended final output
 
-The finished project will contain a reproducible numerical experiment,
-visualisations of nominal and uncertain flybys, distributions of correction
-costs, and a qualified recommendation for correction timing and propellant
-reserve.
+The finished project will be a research-scale interplanetary trajectory-design
+tool. A user will choose a destination or candidate planet sequence, and the
+system will search for a low-fuel combination of gravity assists and thruster
+manoeuvres. It will visualise the resulting mission and report its total
+`delta_v`, estimated propellant use, flight time, closest approaches, and
+arrival accuracy.
 
-It is a robustness study rather than a mission-design tool. The limitations of
-the restricted-body model, simplified manoeuvres, assumed ephemerides, and
-chosen uncertainty distributions will be documented alongside the results.
+Monte Carlo and SDE experiments will then show how the nominal solution changes
+under uncertainty. The result is intended as an educational and research
+prototype, not an operational mission-planning system. Limitations in the
+dynamics, ephemerides, manoeuvre model, optimiser, and uncertainty assumptions
+will be documented explicitly.
 
 ## Running the current experiment
 
