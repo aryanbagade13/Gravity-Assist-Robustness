@@ -1,8 +1,10 @@
 import numpy as np
 import pytest
 
+from gravity_assist.manoeuvres import ImpulsiveManoeuvre
 from gravity_assist.models import CelestialBody, OrbitalState
 from gravity_assist.simulation import (
+    apply_spacecraft_manoeuvre_to_system_state,
     pack_system_state,
     restricted_three_body_derivative,
 )
@@ -71,3 +73,40 @@ def test_derivative_rejects_spacecraft_inside_planet():
             sun_state,
             planet_body,
         )
+
+
+def test_spacecraft_manoeuvre_changes_only_spacecraft_velocity():
+    original_system_state = np.array([
+        1.0, 2.0, 3.0,
+        4.0, 5.0, 6.0,
+        7.0, 8.0, 9.0,
+        10.0, 11.0, 12.0,
+    ])
+    manoeuvre = ImpulsiveManoeuvre(
+        time_s=100.0,
+        delta_velocity_km_s=np.array([0.1, -0.2, 0.3]),
+    )
+
+    updated_system_state = apply_spacecraft_manoeuvre_to_system_state(
+        original_system_state,
+        manoeuvre,
+    )
+
+    np.testing.assert_allclose(
+        updated_system_state,
+        [
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+            10.1, 10.8, 12.3,
+        ],
+    )
+    np.testing.assert_allclose(
+        original_system_state,
+        [
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+            10.0, 11.0, 12.0,
+        ],
+    )

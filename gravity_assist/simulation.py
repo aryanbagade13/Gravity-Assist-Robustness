@@ -1,5 +1,6 @@
 import numpy as np
 from .collisions import position_intersects_body
+from .manoeuvres import ImpulsiveManoeuvre, apply_impulsive_manoeuvre
 from .models import OrbitalState, CelestialBody
 from .forces import total_gravitational_acceleration
 
@@ -13,6 +14,32 @@ def pack_system_state(
         spacecraft_state.position_km,
         spacecraft_state.velocity_km_s,
     ))
+
+
+def apply_spacecraft_manoeuvre_to_system_state(
+    system_state: np.ndarray,
+    manoeuvre: ImpulsiveManoeuvre,
+) -> np.ndarray:
+    updated_system_state = np.asarray(system_state, dtype=float).copy()
+
+    if updated_system_state.shape != (12,):
+        raise ValueError("system_state must have shape (12,)")
+    if not np.isfinite(updated_system_state).all():
+        raise ValueError("system_state must contain only finite values")
+
+    spacecraft_state = OrbitalState(
+        position_km=updated_system_state[6:9],
+        velocity_km_s=updated_system_state[9:12],
+    )
+    manoeuvred_spacecraft_state = apply_impulsive_manoeuvre(
+        spacecraft_state,
+        manoeuvre.delta_velocity_km_s,
+    )
+
+    updated_system_state[6:9] = manoeuvred_spacecraft_state.position_km
+    updated_system_state[9:12] = manoeuvred_spacecraft_state.velocity_km_s
+
+    return updated_system_state
 
 
 def restricted_three_body_derivative(time, system_state, sun_body, sun_state, planet_body):
