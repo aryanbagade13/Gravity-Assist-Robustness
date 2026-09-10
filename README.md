@@ -100,11 +100,13 @@ The repository currently provides a working deterministic flyby model:
   massless spacecraft;
 - a 50-day nominal Jupiter encounter propagated at 60-second intervals;
 - calculation of closest-approach time, centre distance, and surface altitude;
+- comparison of incoming and outgoing velocities at equal Jupiter distances;
+- calculation of turning angle and heliocentric speed change;
 - a three-dimensional close-up containing a correctly scaled Jupiter and the
   nearby spacecraft trajectory.
 
-Automated tests, timestep-convergence analysis, turning-angle measurements,
-Monte Carlo experiments, and SDE integration have not yet been implemented.
+Automated tests, refined asymptotic-state estimation, Monte Carlo experiments,
+and SDE integration have not yet been implemented.
 
 ## Current project layout
 
@@ -141,8 +143,8 @@ Monte Carlo experiments, and SDE integration have not yet been implemented.
 ### Phase 3: measure the flyby outcome
 
 - Detect closest approach and calculate flyby altitude. **Completed.**
-- Measure the turning angle and outgoing direction.
-- Compare incoming and outgoing heliocentric velocity.
+- Measure the turning angle and outgoing direction. **Completed.**
+- Compare incoming and outgoing heliocentric velocity. **Completed.**
 - Reject trajectories that intersect Jupiter or violate model assumptions.
 
 ### Phase 4: introduce manoeuvres
@@ -205,5 +207,5 @@ python -m experiments.deterministic_flyby
 The experiment propagates a 50-day trajectory, reports the closest-approach
 time and altitude, and opens a correctly scaled three-dimensional close-up of
 the encounter. With the current nominal initial conditions, closest approach
-occurs after approximately 16.13 days at an altitude of approximately
-159,210 km above Jupiter's surface.
+occurs after approximately 13.14 days at an altitude of approximately
+371,210 km above Jupiter's surface.

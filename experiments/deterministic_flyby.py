@@ -50,11 +50,18 @@ spacecraft_position_relative_to_jupiter_km = np.array([
     300_000.0,
 ])
 
-spacecraft_velocity_relative_to_jupiter_km_s = np.array([
-    5.0,
-    0.0,
-    0.0,
-])
+hyperbolic_excess_speed_km_s = 5.0
+initial_distance_from_jupiter_km = np.linalg.norm(
+    spacecraft_position_relative_to_jupiter_km
+)
+initial_speed_relative_to_jupiter_km_s = np.sqrt(
+    hyperbolic_excess_speed_km_s**2
+    + 2 * jupiter_body.mu / initial_distance_from_jupiter_km
+)
+incoming_direction = np.array([1.0, 0.0, 0.0])
+spacecraft_velocity_relative_to_jupiter_km_s = (
+    initial_speed_relative_to_jupiter_km_s * incoming_direction
+)
 
 spacecraft_state = OrbitalState(
     position_km=(
@@ -98,6 +105,12 @@ times, states = propagate_fixed_step(
 
 jupiter_positions_km = states[:, 0:3]
 spacecraft_positions_km = states[:, 6:9]
+jupiter_velocities_km_s = states[:, 3:6]
+spacecraft_velocities_km_s = states[:, 9:12]
+
+spacecraft_velocities_relative_to_jupiter_km_s = (
+    spacecraft_velocities_km_s - jupiter_velocities_km_s
+)
 
 spacecraft_positions_relative_to_jupiter_km = (
     spacecraft_positions_km - jupiter_positions_km
@@ -123,11 +136,64 @@ closest_approach_time_days = (
     times[closest_approach_index] / SECONDS_PER_DAY
 )
 
+# Compare the incoming and outgoing motion at the same Jupiter distance.
+comparison_distance_km = 10_000_000.0
+
+incoming_index = np.argmin(
+    np.abs(
+        spacecraft_distances_from_jupiter_km[:closest_approach_index]
+        - comparison_distance_km
+    )
+)
+
+outgoing_index = closest_approach_index + np.argmin(
+    np.abs(
+        spacecraft_distances_from_jupiter_km[closest_approach_index:]
+        - comparison_distance_km
+    )
+)
+
+incoming_velocity_relative_to_jupiter_km_s = (
+    spacecraft_velocities_relative_to_jupiter_km_s[incoming_index]
+)
+outgoing_velocity_relative_to_jupiter_km_s = (
+    spacecraft_velocities_relative_to_jupiter_km_s[outgoing_index]
+)
+
+incoming_speed_relative_to_jupiter_km_s = np.linalg.norm(
+    incoming_velocity_relative_to_jupiter_km_s
+)
+outgoing_speed_relative_to_jupiter_km_s = np.linalg.norm(
+    outgoing_velocity_relative_to_jupiter_km_s
+)
+
+turning_angle_cosine = np.dot(
+    incoming_velocity_relative_to_jupiter_km_s,
+    outgoing_velocity_relative_to_jupiter_km_s,
+) / (
+    incoming_speed_relative_to_jupiter_km_s
+    * outgoing_speed_relative_to_jupiter_km_s
+)
+turning_angle_degrees = np.degrees(
+    np.arccos(np.clip(turning_angle_cosine, -1.0, 1.0))
+)
+
+incoming_heliocentric_speed_km_s = np.linalg.norm(
+    spacecraft_velocities_km_s[incoming_index]
+)
+outgoing_heliocentric_speed_km_s = np.linalg.norm(
+    spacecraft_velocities_km_s[outgoing_index]
+)
+heliocentric_speed_change_km_s = (
+    outgoing_heliocentric_speed_km_s
+    - incoming_heliocentric_speed_km_s
+)
+
 # Construct a correctly scaled spherical surface for Jupiter.
 longitude = np.linspace(0, 2 * np.pi, 80)
 latitude = np.linspace(0, np.pi, 40)
 
-#using spherical co-ordinates
+# Use spherical coordinates.
 jupiter_surface_x_km = (
     jupiter_body.radius_km
     * np.outer(np.cos(longitude), np.sin(latitude))
@@ -200,8 +266,41 @@ figure.tight_layout()
 plt.show()
 
 print(f"Epoch: {EPOCH}")
+print(
+    "Chosen hyperbolic-excess speed: "
+    f"{hyperbolic_excess_speed_km_s:.3f} km/s"
+)
+print(
+    "Initial Jupiter-relative speed: "
+    f"{initial_speed_relative_to_jupiter_km_s:.3f} km/s"
+)
 print(f"Closest-approach time: {closest_approach_time_days:.3f} days")
 print(f"Distance from Jupiter's centre: {closest_approach_distance_km:,.1f} km")
 print(f"Altitude above Jupiter's surface: {closest_approach_altitude_km:,.1f} km")
+print(
+    "Incoming comparison distance: "
+    f"{spacecraft_distances_from_jupiter_km[incoming_index]:,.1f} km"
+)
+print(
+    "Outgoing comparison distance: "
+    f"{spacecraft_distances_from_jupiter_km[outgoing_index]:,.1f} km"
+)
+print(
+    "Incoming Jupiter-relative speed: "
+    f"{incoming_speed_relative_to_jupiter_km_s:.6f} km/s"
+)
+print(
+    "Outgoing Jupiter-relative speed: "
+    f"{outgoing_speed_relative_to_jupiter_km_s:.6f} km/s"
+)
+print(f"Turning angle: {turning_angle_degrees:.3f} degrees")
+print(
+    "Heliocentric speed change: "
+    f"{heliocentric_speed_change_km_s:+.6f} km/s"
+)
 print(f"Stored times shape: {times.shape}")
 print(f"Stored states shape: {states.shape}")
+print(
+    "Jupiter-relative velocity shape:",
+    spacecraft_velocities_relative_to_jupiter_km_s.shape,
+)
