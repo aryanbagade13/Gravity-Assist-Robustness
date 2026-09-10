@@ -1,4 +1,4 @@
-# Gravity-Assist Trajectory Optimisation and Robustness
+# orbitForge
 
 > **Status: Work in progress.** A nominal deterministic Jupiter flyby can now
 > be propagated, measured, and visualised. This is the first component of a
