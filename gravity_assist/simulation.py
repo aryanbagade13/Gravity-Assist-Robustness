@@ -1,4 +1,5 @@
 import numpy as np
+from .collisions import position_intersects_body
 from .models import OrbitalState, CelestialBody
 from .forces import total_gravitational_acceleration
 
@@ -27,6 +28,20 @@ def restricted_three_body_derivative(time, system_state, sun_body, sun_state, pl
         position_km=system_state[6:9],
         velocity_km_s=system_state[9:12],
     )
+
+    if position_intersects_body(
+        spacecraft_state.position_km,
+        sun_body,
+        sun_state,
+    ):
+        raise ValueError("spacecraft intersects the Sun")
+
+    if position_intersects_body(
+        spacecraft_state.position_km,
+        planet_body,
+        planet_state,
+    ):
+        raise ValueError(f"spacecraft intersects {planet_body.name}")
 
     planet_acceleration = total_gravitational_acceleration(
         target_position_km=planet_state.position_km,

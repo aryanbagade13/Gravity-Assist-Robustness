@@ -178,6 +178,10 @@ turning_angle_degrees = np.degrees(
     np.arccos(np.clip(turning_angle_cosine, -1.0, 1.0))
 )
 
+theoretical_eccentricity = 1 + closest_approach_distance_km*hyperbolic_excess_speed_km_s**2 / jupiter_body.mu
+
+theoretical_turning_angle_degrees = np.degrees(2*np.arcsin(1/theoretical_eccentricity))
+
 incoming_heliocentric_speed_km_s = np.linalg.norm(
     spacecraft_velocities_km_s[incoming_index]
 )
@@ -304,3 +308,5 @@ print(
     "Jupiter-relative velocity shape:",
     spacecraft_velocities_relative_to_jupiter_km_s.shape,
 )
+
+print(f"Absolute difference between theoretical turning angle and measured is: {abs(theoretical_turning_angle_degrees - turning_angle_degrees): .3f} degrees")
