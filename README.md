@@ -1,8 +1,9 @@
 # Gravity Assist Robustness Explorer
 
-> **Status: Work in progress.** The deterministic Jupiter flyby is currently
-> being built. Monte Carlo uncertainty propagation and stochastic differential
-> equation modelling are planned extensions.
+> **Status: Work in progress.** A nominal deterministic Jupiter flyby can now
+> be propagated, measured, and visualised. Validation, Monte Carlo uncertainty
+> propagation, and stochastic differential equation modelling are planned
+> extensions.
 
 ## Project goal
 
@@ -89,18 +90,20 @@ solely to make the model stochastic.
 
 ## Current implementation
 
-The repository currently provides the beginnings of a deterministic flyby
-model:
+The repository currently provides a working deterministic flyby model:
 
 - `CelestialBody` and `OrbitalState` data models;
 - gravitational acceleration from multiple bodies;
-- a reusable, single-step RK4 integrator;
+- a reusable RK4 step and fixed-step trajectory propagator;
 - packing of the Jupiter and spacecraft states into a 12-component vector;
 - a restricted three-body derivative for a fixed Sun, moving Jupiter, and
   massless spacecraft;
-- an initial experiment that advances the combined state by one RK4 step.
+- a 50-day nominal Jupiter encounter propagated at 60-second intervals;
+- calculation of closest-approach time, centre distance, and surface altitude;
+- a three-dimensional close-up containing a correctly scaled Jupiter and the
+  nearby spacecraft trajectory.
 
-Full trajectory propagation, flyby measurements, plots, automated tests,
+Automated tests, timestep-convergence analysis, turning-angle measurements,
 Monte Carlo experiments, and SDE integration have not yet been implemented.
 
 ## Current project layout
@@ -131,15 +134,13 @@ Monte Carlo experiments, and SDE integration have not yet been implemented.
 
 ### Phase 2: build the deterministic Jupiter flyby
 
-- Generalise the acceleration model to include multiple gravitating bodies.
-- Represent the time-dependent states of the Sun and Jupiter.
-- Construct the combined system state and its derivative.
-- Propagate a nominal spacecraft encounter with RK4.
-- Plot the heliocentric path and the trajectory relative to Jupiter.
+- Add a full heliocentric trajectory plot.
+- Check the result at several RK4 timesteps.
+- Document the source and interpretation of the initial conditions.
 
 ### Phase 3: measure the flyby outcome
 
-- Detect closest approach and calculate flyby altitude.
+- Detect closest approach and calculate flyby altitude. **Completed.**
 - Measure the turning angle and outgoing direction.
 - Compare incoming and outgoing heliocentric velocity.
 - Reject trajectories that intersect Jupiter or violate model assumptions.
@@ -193,13 +194,16 @@ chosen uncertainty distributions will be documented alongside the results.
 
 ## Running the current experiment
 
-The current code requires Python 3.10 or later and NumPy. From the project
-root, install NumPy if necessary and run:
+The current code requires Python 3.10 or later, NumPy, and Matplotlib. From the
+project root, install the dependencies if necessary and run:
 
 ```bash
-python -m pip install numpy
+python -m pip install numpy matplotlib
 python -m experiments.deterministic_flyby
 ```
 
-The experiment currently checks that one RK4 step preserves the 12-component
-shape, leaves the original state unchanged, and produces a changed next state.
+The experiment propagates a 50-day trajectory, reports the closest-approach
+time and altitude, and opens a correctly scaled three-dimensional close-up of
+the encounter. With the current nominal initial conditions, closest approach
+occurs after approximately 16.13 days at an altitude of approximately
+159,210 km above Jupiter's surface.

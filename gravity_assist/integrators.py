@@ -61,3 +61,20 @@ def rk4_step(
     )
 
     return state + dt_s * (k1 + 2 * k2 + 2 * k3 + k4) / 6
+
+def propagate_fixed_step(initial_state, start_time_s, end_time_s, dt_s, derivative_function: DerivativeFunction):
+    current_state = np.asarray(initial_state, dtype=float).copy()
+    current_time = start_time_s
+    times = [start_time_s]
+    states = [current_state.copy()]
+
+    while current_time < end_time_s:
+        step_s = min(dt_s, end_time_s - current_time)
+        current_state = rk4_step(current_state, current_time, step_s, derivative_function)
+
+        current_time += step_s
+
+        times.append(current_time)
+        states.append(current_state.copy())
+
+    return np.asarray(times), np.asarray(states)

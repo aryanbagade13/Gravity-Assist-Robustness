@@ -1,13 +1,15 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
+from gravity_assist.integrators import propagate_fixed_step
 from gravity_assist.models import CelestialBody, OrbitalState
-from gravity_assist.integrators import rk4_step
 from gravity_assist.simulation import (
     pack_system_state,
     restricted_three_body_derivative,
 )
 
-epoch = "2000-01-01 12:00:00 TDB"
+EPOCH = "2000-01-01 12:00:00 TDB"
+SECONDS_PER_DAY = 24 * 60 * 60
 
 
 sun_body = CelestialBody(
@@ -68,8 +70,9 @@ spacecraft_state = OrbitalState(
 
 system_state = pack_system_state(
     jupiter_state,
-    spacecraft_state
+    spacecraft_state,
 )
+
 
 def derivative_for_this_flyby(time_s, state):
     return restricted_three_body_derivative(
@@ -80,16 +83,125 @@ def derivative_for_this_flyby(time_s, state):
         jupiter_body,
     )
 
-original_state = system_state.copy()
 
-next_system_state = rk4_step(
-    state=system_state,
-    time_s=0.0,
-    dt_s=60.0,
+start_time_s = 0.0
+end_time_s = 50 * SECONDS_PER_DAY
+dt_s = 60.0
+
+times, states = propagate_fixed_step(
+    initial_state=system_state,
+    start_time_s=start_time_s,
+    end_time_s=end_time_s,
+    dt_s=dt_s,
     derivative_function=derivative_for_this_flyby,
 )
 
-print("Original shape:", system_state.shape)
-print("Next shape:", next_system_state.shape)
-print("Original unchanged:", np.array_equal(system_state, original_state))
-print("State changed:", not np.array_equal(next_system_state, system_state))
+jupiter_positions_km = states[:, 0:3]
+spacecraft_positions_km = states[:, 6:9]
+
+spacecraft_positions_relative_to_jupiter_km = (
+    spacecraft_positions_km - jupiter_positions_km
+)
+spacecraft_distances_from_jupiter_km = np.linalg.norm(
+    spacecraft_positions_relative_to_jupiter_km,
+    axis=1,
+)
+
+closest_approach_index = np.argmin(
+    spacecraft_distances_from_jupiter_km
+)
+
+closest_approach_distance_km = (
+    spacecraft_distances_from_jupiter_km[closest_approach_index]
+)
+
+closest_approach_altitude_km = (
+    closest_approach_distance_km - jupiter_body.radius_km
+)
+
+closest_approach_time_days = (
+    times[closest_approach_index] / SECONDS_PER_DAY
+)
+
+# Construct a correctly scaled spherical surface for Jupiter.
+longitude = np.linspace(0, 2 * np.pi, 80)
+latitude = np.linspace(0, np.pi, 40)
+
+#using spherical co-ordinates
+jupiter_surface_x_km = (
+    jupiter_body.radius_km
+    * np.outer(np.cos(longitude), np.sin(latitude))
+)
+
+jupiter_surface_y_km = (
+    jupiter_body.radius_km
+    * np.outer(np.sin(longitude), np.sin(latitude))
+)
+
+jupiter_surface_z_km = (
+    jupiter_body.radius_km
+    * np.outer(np.ones_like(longitude), np.cos(latitude))
+)
+
+# Select only the nearby section of the trajectory for the close-up.
+close_up_limit_km = 500_000.0
+close_up_mask = (
+    spacecraft_distances_from_jupiter_km <= close_up_limit_km
+)
+close_up_positions_km = (
+    spacecraft_positions_relative_to_jupiter_km[close_up_mask]
+)
+
+closest_position_relative_to_jupiter_km = (
+    spacecraft_positions_relative_to_jupiter_km[
+        closest_approach_index
+    ]
+)
+
+figure = plt.figure(figsize=(9, 8))
+axes = figure.add_subplot(projection="3d")
+
+axes.plot_surface(
+    jupiter_surface_x_km,
+    jupiter_surface_y_km,
+    jupiter_surface_z_km,
+    color="orange",
+    alpha=0.8,
+    linewidth=0,
+)
+
+axes.plot(
+    close_up_positions_km[:, 0],
+    close_up_positions_km[:, 1],
+    close_up_positions_km[:, 2],
+    color="blue",
+    label="Spacecraft trajectory",
+)
+
+axes.scatter(
+    closest_position_relative_to_jupiter_km[0],
+    closest_position_relative_to_jupiter_km[1],
+    closest_position_relative_to_jupiter_km[2],
+    color="red",
+    s=50,
+    label="Closest approach",
+)
+
+axes.set_xlim(-close_up_limit_km, close_up_limit_km)
+axes.set_ylim(-close_up_limit_km, close_up_limit_km)
+axes.set_zlim(-close_up_limit_km, close_up_limit_km)
+axes.set_box_aspect((1, 1, 1))
+axes.set_xlabel("x relative to Jupiter (km)")
+axes.set_ylabel("y relative to Jupiter (km)")
+axes.set_zlabel("z relative to Jupiter (km)")
+axes.set_title("Close-up of Jupiter gravity-assist trajectory")
+axes.legend()
+figure.tight_layout()
+plt.show()
+
+print(f"Epoch: {EPOCH}")
+print(f"Closest-approach time: {closest_approach_time_days:.3f} days")
+print(f"Distance from Jupiter's centre: {closest_approach_distance_km:,.1f} km")
+print(f"Altitude above Jupiter's surface: {closest_approach_altitude_km:,.1f} km")
+print(f"Stored times shape: {times.shape}")
+print(f"Stored states shape: {states.shape}")
