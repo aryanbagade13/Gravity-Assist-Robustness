@@ -1,8 +1,9 @@
 # orbitForge
 
 > **Status: Work in progress.** A nominal deterministic Jupiter flyby can now
-> be propagated, measured, and visualised. This is the first component of a
-> planned interplanetary trajectory-design and uncertainty-analysis framework.
+> be propagated, measured, and visualised. The engine also supports physical
+> collision checks and optimiser-ready impulsive manoeuvres scheduled at
+> arbitrary times. Nine automated tests currently protect the foundation.
 
 ## Project goal
 
@@ -125,11 +126,39 @@ The repository currently provides a working deterministic flyby model:
 - calculation of closest-approach time, centre distance, and surface altitude;
 - comparison of incoming and outgoing velocities at equal Jupiter distances;
 - calculation of turning angle and heliocentric speed change;
+- comparison of the simulated turning angle with two-body hyperbolic theory;
+- physical detection of spacecraft intersections with massive bodies;
+- validated impulsive-manoeuvre objects with a calculated `delta_v` magnitude;
+- application of manoeuvres without mutating the original spacecraft state;
+- mission propagation through ordered burns at arbitrary, off-grid times;
+- a controlled Jupiter experiment comparing a nominal trajectory with a
+  10 m/s correction manoeuvre on mission day 5;
 - a three-dimensional close-up containing a correctly scaled Jupiter and the
-  nearby spacecraft trajectory.
+  nearby spacecraft trajectory;
+- nine automated tests covering gravity, collisions, manoeuvres, and scheduled
+  mission propagation.
 
-Automated tests, refined asymptotic-state estimation, Monte Carlo experiments,
-and SDE integration have not yet been implemented.
+Deterministic trajectory optimisation, refined asymptotic-state estimation,
+Monte Carlo experiments, and SDE integration have not yet been implemented.
+
+## Timed-manoeuvre experiment
+
+The first controlled manoeuvre experiment applies a 10 m/s velocity change in
+the positive y-direction five days after the start of the nominal Jupiter
+encounter. Both cases use the same initial state, force model, 60-second step,
+and 50-day duration.
+
+| Metric | No burn | Day-5 burn | Change |
+| --- | ---: | ---: | ---: |
+| Closest-approach altitude | 371,210.4 km | 376,455.0 km | +5,244.7 km |
+| Turning angle | 130.840° | 130.490° | -0.350° |
+| Heliocentric speed change | +2.973557 km/s | +2.931846 km/s | -0.041711 km/s |
+
+The positive y-burn increases the flyby altitude, so Jupiter bends the
+spacecraft's path less and produces a smaller heliocentric speed gain. This is
+an illustrative sensitivity experiment, not an optimised manoeuvre. Its
+purpose is to verify the complete path from a scheduled burn to a measurable
+change in the encounter.
 
 ## Current project layout
 
@@ -139,11 +168,20 @@ and SDE integration have not yet been implemented.
 │   └── deterministic_flyby.py
 ├── gravity_assist/
 │   ├── __init__.py
+│   ├── collisions.py
 │   ├── constants.py
 │   ├── forces.py
 │   ├── integrators.py
+│   ├── manoeuvres.py
+│   ├── mission.py
 │   ├── models.py
 │   └── simulation.py
+├── tests/
+│   ├── test_collisions.py
+│   ├── test_forces.py
+│   ├── test_manoeuvres.py
+│   ├── test_mission.py
+│   └── test_simulation.py
 ├── .gitignore
 └── README.md
 ```
@@ -153,10 +191,13 @@ and SDE integration have not yet been implemented.
 ### Phase 1: validate the single-flyby foundation
 
 - Test the celestial-body and orbital-state validation.
-- Check gravitational acceleration against a hand-calculated case.
+- **Completed:** check gravitational acceleration against a hand-calculated
+  case.
 - Test the general RK4 step using a differential equation with a known result.
-- Perform timestep-convergence and collision checks.
-- Compare the simulated turning angle with two-body hyperbolic theory.
+- Perform timestep-convergence checks.
+- **Completed:** detect body intersections and stop invalid propagation.
+- **Completed:** compare the simulated turning angle with two-body hyperbolic
+  theory.
 
 ### Phase 2: generalise the mission model
 
@@ -167,8 +208,12 @@ and SDE integration have not yet been implemented.
 
 ### Phase 3: introduce thruster manoeuvres and fuel
 
-- Apply an impulsive trajectory-correction manoeuvre before the encounter.
-- Support multiple burns with chosen times and three-dimensional burn vectors.
+- **Completed:** represent three-dimensional impulsive manoeuvres and schedule
+  them at arbitrary times.
+- **Completed:** propagate a mission through an ordered list of burns without
+  restricting burn times to the RK4 step grid.
+- **Completed:** apply a trajectory-correction manoeuvre to the nominal Jupiter
+  encounter and measure the resulting change.
 - Accumulate the mission's total `delta_v`.
 - Convert `delta_v` into propellant mass using the rocket equation.
 
@@ -210,11 +255,17 @@ parameters and probability distributions will be stated explicitly.
 ## Intended final output
 
 The finished project will be a research-scale interplanetary trajectory-design
-tool. A user will choose a destination or candidate planet sequence, and the
-system will search for a low-fuel combination of gravity assists and thruster
-manoeuvres. It will visualise the resulting mission and report its total
-`delta_v`, estimated propellant use, flight time, closest approaches, and
-arrival accuracy.
+desktop application. A user will choose a destination or candidate planet
+sequence, and the system will search for a low-fuel combination of gravity
+assists and thruster manoeuvres. It will animate the resulting mission and
+report its total `delta_v`, estimated propellant use, flight time, closest
+approaches, and arrival accuracy.
+
+The planned interface will be a native desktop window built separately from
+the numerical engine. Mission controls will supply inputs to the tested Python
+modules, while interactive three-dimensional views and result panels will
+display the output. This separation keeps the physics usable without the user
+interface and allows a future optimiser to call the same mission functions.
 
 Monte Carlo and SDE experiments will then show how the nominal solution changes
 under uncertainty. The result is intended as an educational and research
@@ -224,16 +275,16 @@ will be documented explicitly.
 
 ## Running the current experiment
 
-The current code requires Python 3.10 or later, NumPy, and Matplotlib. From the
-project root, install the dependencies if necessary and run:
+The current code requires Python 3.10 or later, NumPy, Matplotlib, and pytest.
+From the project root, install the dependencies if necessary and run:
 
 ```bash
-python -m pip install numpy matplotlib
+python -m pip install numpy matplotlib pytest
+python -m pytest -q
 python -m experiments.deterministic_flyby
 ```
 
-The experiment propagates a 50-day trajectory, reports the closest-approach
-time and altitude, and opens a correctly scaled three-dimensional close-up of
-the encounter. With the current nominal initial conditions, closest approach
-occurs after approximately 13.14 days at an altitude of approximately
-371,210 km above Jupiter's surface.
+The experiment propagates the nominal and day-5 manoeuvred trajectories over
+50 days. It reports their closest approaches, turning angles, Jupiter-relative
+outgoing speeds, and heliocentric speed changes. It also opens a correctly
+scaled three-dimensional close-up of the nominal encounter.
